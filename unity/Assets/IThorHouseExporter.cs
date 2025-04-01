@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine.SceneManagement;
 using UnityEngine;
+using System;
 
 public class IThorHouseExporter : MonoBehaviour
 {
@@ -11,19 +12,22 @@ public class IThorHouseExporter : MonoBehaviour
         public string objectType = string.Empty;
         public string assetId = string.Empty;
         public Vector3 position;
-        public Quaternion rotation;
+        public Vector3 rotation;
         public bool kinematic;
     }
 
-
+    [System.Serializable]
+    class IThorExportNodeList
+    {
+        public List<IThorExportNode> objects;
+    }
 
     void Start()
     {
         Scene scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
         GameObject[] objects = scene.GetRootGameObjects();
 
-        // var nodesCache = new Dictionary<string, IThorExportNode>();
-        var nodesCache = new List<IThorExportNode>();
+        var nodes = new List<IThorExportNode>();
 
         var stack = new Stack<(GameObject, GameObject)>();
         foreach (var obj in objects)
@@ -32,32 +36,29 @@ public class IThorHouseExporter : MonoBehaviour
         while (stack.Count > 0)
         {
             var (obj, parent) = stack.Pop();
-            if (obj.GetComponent<SimObjPhysics>()) {
-                var simObj = obj.GetComponent<SimObjPhysics>();
+            if (obj.GetComponent<SimObjPhysics>())
+            {
+                var simObjPhysics = obj.GetComponent<SimObjPhysics>();
                 var exportNode = new IThorExportNode
                 {
-                    objectType = obj.name,
-                    assetId = simObj.assetID,
+                    objectType = Enum.GetName(typeof(SimObjType), simObjPhysics.Type),
+                    assetId = simObjPhysics.assetID,
                     position = obj.transform.position,
-                    rotation = obj.transform.rotation,
-                    kinematic = true,
+                    rotation = obj.transform.rotation.eulerAngles,
+                    kinematic = simObjPhysics.isStatic,
                 };
 
-                nodesCache.Add(exportNode);
-                // nodesCache.Add(obj.name, exportNode);
+                nodes.Add(exportNode);
             }
 
             foreach (Transform childTf in obj.transform)
-            {
                 stack.Push((childTf.gameObject, obj));
-            }
         }
 
-        var jsonStorage = new Dictionary<string, List<IThorExportNode>> {
-            { "objects", nodesCache }
-        };
+        // Use the wrapper for JsonUtility to serialize the list
+        var nodesList = new IThorExportNodeList{objects = nodes};
 
-        var json = JsonUtility.ToJson(nodesCache, true);
-        File.WriteAllText(Application.dataPath + "/IThorHouseExport.json", json);
+        var json = JsonUtility.ToJson(nodesList, true);
+        File.WriteAllText(Path.Combine(Application.dataPath, "IThorHouseExport.json"), json);
     }
 }
