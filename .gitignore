@@ -130,3 +130,6 @@ tmp/
 
 objaverse/
 unity/Assets/Resources/ai2thor-objaverse
+
+unity/Assets/Prefabs/SourceFiles/**/*.mat
+unity/Assets/Prefabs/SourceFiles/**/*.meta
