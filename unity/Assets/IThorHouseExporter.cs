@@ -1,8 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
-using UnityEngine.SceneManagement;
 using UnityEngine;
-using System;
+using UnityEngine.SceneManagement;
 
 public class IThorHouseExporter : MonoBehaviour
 {
@@ -17,9 +17,22 @@ public class IThorHouseExporter : MonoBehaviour
     }
 
     [System.Serializable]
+    class IThorExportLightNode
+    {
+        public string name = string.Empty;
+        public string type = string.Empty;
+        public Vector3 position;
+        public Vector3 rotation;
+        public Color color;
+        public float intensity;
+        public bool castShadows;
+    }
+
+    [System.Serializable]
     class IThorExportNodeList
     {
         public List<IThorExportNode> objects;
+        public List<IThorExportLightNode> lights;
     }
 
     void Start()
@@ -28,6 +41,7 @@ public class IThorHouseExporter : MonoBehaviour
         GameObject[] objects = scene.GetRootGameObjects();
 
         var nodes = new List<IThorExportNode>();
+        var lightNodes = new List<IThorExportLightNode>();
 
         var stack = new Stack<(GameObject, GameObject)>();
         foreach (var obj in objects)
@@ -39,7 +53,7 @@ public class IThorHouseExporter : MonoBehaviour
             if (obj.GetComponent<SimObjPhysics>())
             {
                 var simObjPhysics = obj.GetComponent<SimObjPhysics>();
-                var exportNode = new IThorExportNode
+                var node = new IThorExportNode
                 {
                     objectType = Enum.GetName(typeof(SimObjType), simObjPhysics.Type),
                     assetId = simObjPhysics.assetID,
@@ -48,7 +62,23 @@ public class IThorHouseExporter : MonoBehaviour
                     kinematic = simObjPhysics.isStatic,
                 };
 
-                nodes.Add(exportNode);
+                nodes.Add(node);
+            }
+            else if (obj.GetComponent<Light>())
+            {
+                var light = obj.GetComponent<Light>();
+                var lightNode = new IThorExportLightNode
+                {
+                    name = light.name,
+                    type = Enum.GetName(typeof(LightType), light.type).ToLower(),
+                    position = obj.transform.position,
+                    rotation = obj.transform.rotation.eulerAngles,
+                    color = light.color,
+                    intensity = light.intensity,
+                    castShadows = light.shadows != LightShadows.None,
+                };
+
+                lightNodes.Add(lightNode);
             }
 
             foreach (Transform childTf in obj.transform)
@@ -56,9 +86,9 @@ public class IThorHouseExporter : MonoBehaviour
         }
 
         // Use the wrapper for JsonUtility to serialize the list
-        var nodesList = new IThorExportNodeList{objects = nodes};
+        var nodesList = new IThorExportNodeList { objects = nodes, lights = lightNodes };
 
         var json = JsonUtility.ToJson(nodesList, true);
-        File.WriteAllText(Path.Combine(Application.dataPath, "IThorHouseExport.json"), json);
+        File.WriteAllText(Path.Combine(Application.dataPath, $"{scene.name}.json"), json);
     }
 }
