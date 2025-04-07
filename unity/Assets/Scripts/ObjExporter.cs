@@ -67,6 +67,62 @@ public class ObjExporter
         m_StartIndex += numVertices;
         return strBuilder.ToString();
     }
+
+    public string ProcessTransform(Transform tf, bool makeSubmeshes)
+    {
+        var strBuilder = new StringBuilder();
+
+        if (tf.TryGetComponent<MeshFilter>(out var meshFilter))
+        {
+            strBuilder.AppendLine($"# {tf.name}");
+            strBuilder.AppendLine($"#---------------");
+
+            if (makeSubmeshes)
+            {
+                strBuilder.AppendLine($"g {tf.name}");
+            }
+
+            strBuilder.Append(MeshToString(meshFilter, tf));
+        }
+
+        for (var i = 0; i < tf.childCount; i++)
+        {
+            strBuilder.Append(ProcessTransform(tf.GetChild(i), makeSubmeshes));
+        }
+
+        return strBuilder.ToString();
+    }
+
+    public string Export(GameObject go, string fileName, bool makeSubmeshes)
+    {
+        Start();
+
+        var strBuilder = new StringBuilder();
+
+        strBuilder.AppendLine("----------------------------------------------");
+        strBuilder.AppendLine($"# {fileName}.obj");
+        strBuilder.AppendLine($"# Exported using iThor OBJ exporter");
+        strBuilder.AppendLine($"# {System.DateTime.Now.ToLongDateString()}");
+        strBuilder.AppendLine($"# {System.DateTime.Now.ToLongTimeString()}");
+        strBuilder.AppendLine("----------------------------------------------");
+
+        var tf = go.transform;
+        var originalPosition = tf.position;
+        tf.position = Vector3.zero;
+
+        if (!makeSubmeshes)
+        {
+            strBuilder.AppendLine($"g {tf.name}");
+        }
+
+        strBuilder.Append(ProcessTransform(tf, makeSubmeshes));
+
+        tf.position = originalPosition;
+
+        End();
+
+        return strBuilder.ToString();
+    }
 }
 
 public class ObjExporterTools : MonoBehaviour
@@ -95,59 +151,10 @@ public class ObjExporterTools : MonoBehaviour
         string fileName = EditorUtility.SaveFilePanel("Export .obj file", "", meshName, "obj");
 
         var objExporter = new ObjExporter();
-        objExporter.Start();
+        var objStr = objExporter.Export(Selection.activeGameObject, fileName, makeSubmeshes);
 
-        var strBuilder = new StringBuilder();
-        strBuilder.AppendLine("----------------------------------------------");
-        strBuilder.AppendLine($"# {meshName}.obj");
-        strBuilder.AppendLine("# Exported using iThor OBJ exporter");
-        strBuilder.AppendLine($"# {System.DateTime.Now.ToLongDateString()}");
-        strBuilder.AppendLine($"# {System.DateTime.Now.ToLongTimeString()}");
-        strBuilder.AppendLine("----------------------------------------------");
-
-        var tf = Selection.activeGameObject.transform;
-        var originalPosition = tf.position;
-        tf.position = Vector3.zero;
-
-        if (!makeSubmeshes)
-        {
-            strBuilder.AppendLine($"g {tf.name}");
-        }
-
-        strBuilder.Append(ProcessTransform(tf, makeSubmeshes, objExporter));
-
-        WriteToFile(fileName, strBuilder.ToString());
-
-        objExporter.End();
-
-        tf.position = originalPosition;
+        WriteToFile(fileName, objStr);
         Debug.Log($"Exported Mesh: {fileName}");
-    }
-
-    static string ProcessTransform(Transform tf, bool makeSubmeshes, ObjExporter exporter)
-    {
-        var strBuilder = new StringBuilder();
-
-        var meshFilter = tf.GetComponent<MeshFilter>();
-        if (meshFilter != null)
-        {
-            strBuilder.AppendLine($"# {tf.name}");
-            strBuilder.AppendLine("#---------------");
-
-            if (makeSubmeshes)
-            {
-                strBuilder.AppendLine($"g {tf.name}");
-            }
-
-            strBuilder.Append(exporter.MeshToString(meshFilter, tf));
-        }
-
-        for (var i = 0; i < tf.childCount; i++)
-        {
-            strBuilder.Append(ProcessTransform(tf.GetChild(i), makeSubmeshes, exporter));
-        }
-
-        return strBuilder.ToString();
     }
 
     static void WriteToFile(string fileName, string content)
