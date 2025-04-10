@@ -15,18 +15,36 @@ public class ObjExporter
 {
     private int m_StartIndex = 0;
     private string m_ExportDirectory = string.Empty;
-    private Dictionary<string, ObjAssetTexture> m_Assets;
+    private List<ObjAssetTexture> m_Assets;
 
     public void Start(string exportDirectory)
     {
         m_StartIndex = 0;
         m_ExportDirectory = exportDirectory;
-        m_Assets = new Dictionary<string, ObjAssetTexture>();
+        m_Assets = new List<ObjAssetTexture>();
     }
 
     public void End()
     {
         m_StartIndex = 0;
+        foreach (var asset in m_Assets)
+        {
+            if (asset.texture != null)
+            {
+                var texture = asset.texture as Texture2D;
+                string assetPath = AssetDatabase.GetAssetPath(texture);
+                if (File.Exists(assetPath))
+                {
+                    string textureName = Path.GetFileName(assetPath);
+                    string copyPath = Path.Combine(m_ExportDirectory, "textures", textureName);
+                    if (!Directory.Exists(Path.GetDirectoryName(copyPath)))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(copyPath));
+                    }
+                    File.Copy(assetPath, copyPath, true);
+                }
+            }
+        }
         m_Assets.Clear();
     }
 
@@ -120,9 +138,9 @@ public class ObjExporter
                 {
                     name = texture.name,
                     path = Path.Combine(m_ExportDirectory, "textures", texture.name + ".png"),
-                    texture = texture
+                    texture = texture,
                 };
-                m_Assets.Add(asset.name, asset);
+                m_Assets.Add(asset);
             }
         }
 
