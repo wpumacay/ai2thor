@@ -116,12 +116,15 @@ public class ObjExporter
         var strBuilder = new StringBuilder();
 
         strBuilder.AppendLine($"newmtl {mat.name}");
-        strBuilder.AppendLine($"Ka {mat.color.r} {mat.color.g} {mat.color.b}");
-        strBuilder.AppendLine($"Kd {mat.color.r} {mat.color.g} {mat.color.b}");
-        if (mat.color.a < 1.0f)
+        if (mat.HasProperty("_Color"))
         {
-            strBuilder.AppendLine($"Tr {1 - mat.color.a}");
-            strBuilder.AppendLine($"d {mat.color.a}");
+            strBuilder.AppendLine($"Ka {mat.color.r} {mat.color.g} {mat.color.b}");
+            strBuilder.AppendLine($"Kd {mat.color.r} {mat.color.g} {mat.color.b}");
+            if (mat.color.a < 1.0f)
+            {
+                strBuilder.AppendLine($"Tr {1 - mat.color.a}");
+                strBuilder.AppendLine($"d {mat.color.a}");
+            }
         }
         if (mat.HasProperty("_SpecColor"))
         {
