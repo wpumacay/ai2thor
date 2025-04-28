@@ -15,7 +15,6 @@ public class IThorHouseExporter : MonoBehaviour
         public string objectType = string.Empty;
         public string parentName = string.Empty; // Structural, Lighting, etc.
         public string assetId = string.Empty;
-        public string customId = string.Empty;
         public Vector3 position;
         public Vector3 rotation;
         public bool kinematic;
@@ -35,10 +34,42 @@ public class IThorHouseExporter : MonoBehaviour
     }
 
     [System.Serializable]
+    class IThorExportRoomNode
+    {
+        public string name = string.Empty;
+        // TODO(wilbert): Complete the definition for this node
+    }
+
+    [System.Serializable]
+    class IThorExportDoorNode
+    {
+        public string name = string.Empty;
+        // TODO(wilbert): Complete the definition for this node
+    }
+
+    [System.Serializable]
+    class IThorExportWallNode
+    {
+        public string name = string.Empty;
+        // TODO(wilbert): Complete the definition for this node
+    }
+
+    [System.Serializable]
+    class IThorExportWindowNode
+    {
+        public string name = string.Empty;
+        // TODO(wilbert): Complete the definition for this node
+    }
+
+    [System.Serializable]
     class IThorExportNodeList
     {
         public List<IThorExportNode> objects;
         public List<IThorExportLightNode> lights;
+        public List<IThorExportRoomNode> rooms;
+        public List<IThorExportDoorNode> doors;
+        public List<IThorExportWallNode> walls;
+        public List<IThorExportWindowNode> windows;
     }
 
     [MenuItem("Tools/IThor - Export Current Scene")]
@@ -62,6 +93,12 @@ public class IThorHouseExporter : MonoBehaviour
         while (stack.Count > 0)
         {
             var (obj, parent) = stack.Pop();
+            if (obj.activeSelf == false)
+                continue;
+
+            // TODO(wilbert): should check for other cases of no-export?
+
+            // Do all exportable objects have a SimObjPhysics component?
             if (obj.GetComponent<SimObjPhysics>())
             {
                 var simObjPhysics = obj.GetComponent<SimObjPhysics>();
@@ -74,19 +111,16 @@ public class IThorHouseExporter : MonoBehaviour
                     position = obj.transform.position,
                     rotation = obj.transform.rotation.eulerAngles,
                     kinematic = simObjPhysics.isStatic,
-                    customId = string.Empty,
                 };
 
-                // Export custom geometry
+                // No link to a prefab, so export all geometry to an .obj file
                 if (simObjPhysics.assetID == "")
                 {
-                    var fileNameObj = Path.Combine(folderPath, "models", $"{obj.name}.obj");
-                    var fileNameMtl = Path.Combine(folderPath, "models", $"{obj.name}.mtl");
+                    var filePathObj = Path.Combine(folderPath, "models", $"{obj.name}.obj");
+                    var filePathMtl = Path.Combine(folderPath, "models", $"{obj.name}.mtl");
 
-                    var fileNameNoExt = Path.GetFileNameWithoutExtension(fileNameObj);
-                    var fileDirectory = Path.GetDirectoryName(fileNameObj);
-
-                    node.customId = fileNameNoExt;
+                    var fileNameNoExt = Path.GetFileNameWithoutExtension(filePathObj);
+                    var fileDirectory = Path.GetDirectoryName(filePathObj);
 
                     var (objMeshStr, objMaterialStr) = objExporter.Export(
                         obj,
@@ -95,9 +129,9 @@ public class IThorHouseExporter : MonoBehaviour
                         true
                     );
 
-                    using (var writer = new StreamWriter(fileNameObj))
+                    using (var writer = new StreamWriter(filePathObj))
                         writer.Write(objMeshStr);
-                    using (var writer = new StreamWriter(fileNameMtl))
+                    using (var writer = new StreamWriter(filePathMtl))
                         writer.Write(objMaterialStr);
                 }
 
